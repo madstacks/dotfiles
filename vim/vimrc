@@ -1,0 +1,47 @@
+" Install vim-plug if it is not already there
+if empty(glob('~/.vim/autoload/plug.vim'))
+  silent !curl -fLo ~/.vim/autoload/plug.vim --create-dirs
+    \ https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+  autocmd VimEnter * PlugInstall --sync | source ~/.vimrc
+endif
+
+" Plugins
+" Run :PlugInstall to install new ones
+
+call plug#begin('~/.vim/plugged')
+  Plug 'itchyny/lightline.vim'
+  Plug 'scrooloose/nerdtree', { 'on':  'NERDTreeToggle' }
+  Plug 'airblade/vim-gitgutter'
+  Plug 'terryma/vim-multiple-cursors'
+  Plug 'tpope/vim-surround'
+  Plug 'w0rp/ale'
+call plug#end()
+
+" export TERM=xterm-256color
+if !has('gui_running')
+  set t_Co=256
+endif
+
+" Options
+
+set laststatus=2    " Always display the status line
+set noshowmode      " Let lightline show the mode
+set autochdir       " automatically change window's cwd to file's dir
+set number          " show line numbers
+set showmatch       " show matching parenthesis
+set ignorecase		  " ignore case when searching
+set smartcase       " ignore case if all lowercase
+set nocompatible    " don't care about vi no more
+set hlsearch        " highlight search
+set incsearch       " highlight as you search
+set history=50      " keep 50 lines of command line history
+set encoding=utf-8
+set termencoding=utf-8
+
+" Key Bindings
+
+let mapleader = ","
+map <Leader>n <esc>:tabprevious<CR>   " moving between tabs
+map <Leader>m <esc>:tabnext<CR>       " moving between tabs
+map <Leader>c <esc>:nohlsearch<CR>    " clear search highlighting
+map <C-o> :NERDTreeToggle<CR>

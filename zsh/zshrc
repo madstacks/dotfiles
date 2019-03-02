@@ -1,0 +1,105 @@
+# Source Prezto.
+if [[ -s "${ZDOTDIR:-$HOME}/.zprezto/init.zsh" ]]; then
+  source "${ZDOTDIR:-$HOME}/.zprezto/init.zsh"
+fi
+
+export EDITOR="/usr/bin/vim"
+export VISUAL=$EDITOR
+export WORKON_HOME=$HOME/virtualenvs
+export PROJECT_HOME=$HOME/dev
+
+VIRTUALENVWRAPPER_PYTHON=/usr/local/bin/python
+VIRTUALENVWRAPPER_VIRTUALENV=/usr/local/bin/virtualenv
+source /usr/local/bin/virtualenvwrapper.sh
+
+# source stuff not stored in git.
+for file in $HOME/.zsh/extras/*.zsh; do
+    source $file
+done
+
+alias gpo="git push origin"
+alias gco="git checkout -b"
+alias rd="rm -rf"
+alias tpl="terraform plan | landscape"
+alias pfind='ps -aef | grep -i'
+
+alias k='kubectl'
+alias kcon='kubectx'
+alias kns='kubens'
+alias kpods='kubectl get pods --all-namespaces -o wide'
+alias kimg='kubectl get pods -o "custom-columns=NAME:.metadata.name,STATUS:.status.phase,NODE:.status.hostIP,IMAGE:.spec.containers[*].image" -l k8s-app='
+alias krestart='kubectl patch -p "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"${KRESTART_ANNOTATION:-krestart}\":\"`date +'%s'`\"}}}}}"'
+alias kevicted='kubectl get pods --all-namespaces -ojson | jq -r ".items[] | select(.status.reason!=null) | select(.status.reason | contains(\"Evicted\")) | .metadata.name + \" \" + .metadata.namespace"'
+
+alias -g G="|grep --color=auto -Ei"
+alias -g L="|less -R"
+alias -g SL="|sort|less"
+alias -g NOC="|sed -r 's,\x1B\[[0-9;]*[a-zA-Z],,g'|tr -d '\r'"
+alias -g Y="-o yaml | less -R"
+alias -g P="| peco"
+
+# delete a local and remote git branch
+function rmbranch() {
+    if ! $(git branch -a --list | grep -q "$1"); then
+        echo "Branch $1 does not exist"
+        return
+    fi
+    if ! $(git branch --merged | grep -q "$1"); then
+        echo "$1 has not been merged to master yet"
+        read -r -p "Are you sure you want to delete it? [y/N] " response
+        if [[ ! "${response,,}" =~ ^(yes|y)$ ]]; then
+            return
+        fi
+    fi
+    git branch -D $1 && git push origin :$1
+}
+
+# ssh known_hosts deletion helper
+function sdk() {
+    if echo $1 | grep -qE '^[0-9]+$|^[0-9]+,[0-9]+$' ; then
+        sed -i "${1}d" ${HOME}/.ssh/known_hosts
+    fi
+}
+
+# print the process using a port (for MacOS)
+function psport() {
+    for i in $(lsof -Pnl +M -i4 | grep ":${1}.*LISTEN" | awk '{ print $2 }'); do ps -fp $i; done
+}
+
+
+# git grep the entire repo, not just the current directory
+function ggrep() {
+    git grep $1 -- :/
+}
+
+
+# print resource usage for each k8s node. This will take a while if there are a lot of nodes
+function kresources() {
+    local node_type=${1:-.}
+	local node_count=0
+	local total_percent_cpu=0
+	local total_percent_mem=0
+    local output=""
+	for n in $(kubectl get nodes --no-headers | grep ${node_type} | awk '{print $1}'); do
+        local describe=$(kubectl describe node $n)
+		local pods=$(echo ${describe} | grep -i "non-terminated pods" | awk '{print $3}' | sed 's/(//g')
+        local requests=$(echo ${describe}  | grep -iA6 "allocated resources")
+		local cpu_percent=$(echo ${requests} | grep cpu | awk -F "[()%]" '{print $2}')
+		local cpu_count=$(echo ${requests} | grep cpu | awk '{print $2}')
+		local mem_percent=$(echo ${requests} | grep memory | awk -F "[()%]" '{print $2}')
+		local mem_count=$(echo ${requests} | grep memory | awk '{print $2}')
+		output="${output}$(printf "\n%-50s %-5s %-20s %s" \
+            "$n" "${pods}" "${cpu_count} ${cpu_percent}% cpu" "${mem_count} ${mem_percent}% mem")"
+
+        node_count=$((node_count + 1))
+		total_percent_cpu=$((total_percent_cpu + cpu_percent))
+		total_percent_mem=$((total_percent_mem + mem_percent))
+	done
+
+    local avg_percent_cpu=$((total_percent_cpu / node_count))
+	local avg_percent_mem=$((total_percent_mem / node_count))
+
+    echo $output | sort -nrk2 | egrep -v '^$'
+    echo
+    echo "Average usage: ${avg_percent_cpu}% cpu, ${avg_percent_mem}% memory."
+}

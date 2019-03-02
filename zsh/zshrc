@@ -27,7 +27,7 @@ alias k='kubectl'
 alias kcon='kubectx'
 alias kns='kubens'
 alias kpods='kubectl get pods --all-namespaces -o wide'
-alias kimg='kubectl get pods -o "custom-columns=NAME:.metadata.name,STATUS:.status.phase,NODE:.status.hostIP,IMAGE:.spec.containers[*].image" -l k8s-app='
+alias kimg='kubectl get pods -o "custom-columns=NAME:.metadata.name,STATUS:.status.phase,NODE:.status.hostIP,IMAGE:.spec.containers[*].image"'
 alias krestart='kubectl patch -p "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"${KRESTART_ANNOTATION:-krestart}\":\"`date +'%s'`\"}}}}}"'
 alias kevicted='kubectl get pods --all-namespaces -ojson | jq -r ".items[] | select(.status.reason!=null) | select(.status.reason | contains(\"Evicted\")) | .metadata.name + \" \" + .metadata.namespace"'
 

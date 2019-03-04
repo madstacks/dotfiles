@@ -29,7 +29,7 @@ set noshowmode      " Let lightline show the mode
 set autochdir       " automatically change window's cwd to file's dir
 set number          " show line numbers
 set showmatch       " show matching parenthesis
-set ignorecase		  " ignore case when searching
+set ignorecase      " ignore case when searching
 set smartcase       " ignore case if all lowercase
 set nocompatible    " don't care about vi no more
 set hlsearch        " highlight search

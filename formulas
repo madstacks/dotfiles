@@ -23,7 +23,8 @@ pipenv
 pkg-config
 pre-commit
 protobuf
-python@2
+pyenv
+ranger
 sipcalc
 stern
 terraform

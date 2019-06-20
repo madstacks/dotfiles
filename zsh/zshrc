@@ -8,14 +8,28 @@ export VISUAL=$EDITOR
 export WORKON_HOME=$HOME/virtualenvs
 export PROJECT_HOME=$HOME/dev
 
-VIRTUALENVWRAPPER_PYTHON=/usr/local/bin/python
-VIRTUALENVWRAPPER_VIRTUALENV=/usr/local/bin/virtualenv
-source /usr/local/bin/virtualenvwrapper.sh
+export PYENV_VIRTUALENVWRAPPER_PREFER_PYVENV="true"
+
+eval "$(pyenv init -)"
+pyenv virtualenvwrapper_lazy
+
+#VIRTUALENVWRAPPER_PYTHON=/usr/local/bin/python
+#VIRTUALENVWRAPPER_VIRTUALENV=/usr/local/bin/virtualenv
+#source /usr/local/bin/virtualenvwrapper.sh
 
 # source stuff not stored in git.
 for file in $HOME/.zsh/extras/*.zsh; do
     source $file
 done
+
+
+bindkey -v
+bindkey '^R' history-incremental-search-backward
+bindkey '^A' beginning-of-line
+bindkey '^E' end-of-line
+
+# override alias from fasd prezto module
+alias j='fasd_cd'
 
 alias gpo="git push origin"
 alias gco="git checkout -b"
@@ -66,12 +80,17 @@ function psport() {
     for i in $(lsof -Pnl +M -i4 | grep ":${1}.*LISTEN" | awk '{ print $2 }'); do ps -fp $i; done
 }
 
-
 # git grep the entire repo, not just the current directory
 function ggrep() {
     git grep $1 -- :/
 }
 
+# creates an annotated tag
+function gtag() {
+    local version=$1
+    local message=${2:-Version $1}
+    git tag -a ${version} -m ${message}
+}
 
 # print resource usage for each k8s node. This will take a while if there are a lot of nodes
 function kresources() {

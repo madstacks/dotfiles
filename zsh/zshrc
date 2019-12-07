@@ -3,6 +3,8 @@ if [[ -s "${ZDOTDIR:-$HOME}/.zprezto/init.zsh" ]]; then
   source "${ZDOTDIR:-$HOME}/.zprezto/init.zsh"
 fi
 
+eval "$(direnv hook zsh)"
+
 export EDITOR="/usr/bin/vim"
 export VISUAL=$EDITOR
 export WORKON_HOME=$HOME/virtualenvs
@@ -36,6 +38,7 @@ alias gco="git checkout -b"
 alias rd="rm -rf"
 alias tpl="terraform plan | landscape"
 alias pfind='ps -aef | grep -i'
+alias vf='vim $(fzf --exact)'
 
 alias k='kubectl'
 alias kcon='kubectx'
@@ -50,7 +53,6 @@ alias -g L="|less -R"
 alias -g SL="|sort|less"
 alias -g NOC="|sed -r 's,\x1B\[[0-9;]*[a-zA-Z],,g'|tr -d '\r'"
 alias -g Y="-o yaml | less -R"
-alias -g P="| peco"
 
 # delete a local and remote git branch
 function rmbranch() {
@@ -101,14 +103,15 @@ function kresources() {
     local output=""
 	for n in $(kubectl get nodes --no-headers | grep ${node_type} | awk '{print $1}'); do
         local describe=$(kubectl describe node $n)
+		local roles=$(echo ${describe} | grep -i "Roles:" | awk '{print $2}')
 		local pods=$(echo ${describe} | grep -i "non-terminated pods" | awk '{print $3}' | sed 's/(//g')
         local requests=$(echo ${describe}  | grep -iA6 "allocated resources")
 		local cpu_percent=$(echo ${requests} | grep cpu | awk -F "[()%]" '{print $2}')
 		local cpu_count=$(echo ${requests} | grep cpu | awk '{print $2}')
 		local mem_percent=$(echo ${requests} | grep memory | awk -F "[()%]" '{print $2}')
 		local mem_count=$(echo ${requests} | grep memory | awk '{print $2}')
-		output="${output}$(printf "\n%-50s %-5s %-20s %s" \
-            "$n" "${pods}" "${cpu_count} ${cpu_percent}% cpu" "${mem_count} ${mem_percent}% mem")"
+		output="${output}$(printf "\n%-50s %-15s %-5s %-20s %s" \
+            "$n" "${roles}" "${pods}" "${cpu_count} ${cpu_percent}% cpu" "${mem_count} ${mem_percent}% mem")"
 
         node_count=$((node_count + 1))
 		total_percent_cpu=$((total_percent_cpu + cpu_percent))
@@ -118,7 +121,10 @@ function kresources() {
     local avg_percent_cpu=$((total_percent_cpu / node_count))
 	local avg_percent_mem=$((total_percent_mem / node_count))
 
-    echo $output | sort -nrk2 | egrep -v '^$'
+    echo $output | sort -nrk3 | egrep -v '^$'
     echo
     echo "Average usage: ${avg_percent_cpu}% cpu, ${avg_percent_mem}% memory."
 }
+
+
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh

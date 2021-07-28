@@ -5,11 +5,11 @@ fi
 
 eval "$(direnv hook zsh)"
 
+export HISTCONTROL=ignorespace
 export EDITOR="/usr/bin/vim"
 export VISUAL=$EDITOR
 export WORKON_HOME=$HOME/virtualenvs
 export PROJECT_HOME=$HOME/dev
-
 export PYENV_VIRTUALENVWRAPPER_PREFER_PYVENV="true"
 
 eval "$(pyenv init -)"
@@ -24,6 +24,8 @@ for file in $HOME/.zsh/extras/*.zsh; do
     source $file
 done
 
+# https://github.com/lukechilds/zsh-nvm
+source ~/.zsh-nvm/zsh-nvm.plugin.zsh
 
 bindkey -v
 bindkey '^R' history-incremental-search-backward
@@ -34,16 +36,22 @@ bindkey '^E' end-of-line
 alias j='fasd_cd'
 
 alias gpo="git push origin"
-alias gco="git checkout -b"
+alias gcob="git checkout -b"
+alias gco='git checkout $(git branch | fzf)'
+alias gprm='git pull --rebase origin master'
 alias rd="rm -rf"
 alias tpl="terraform plan | landscape"
 alias pfind='ps -aef | grep -i'
 alias vf='vim $(fzf --exact)'
+alias vdiff="vimdiff -c 'set diffopt+=iwhite'"
+alias venv='workon $(workon | fzf)'
 
 alias k='kubectl'
 alias kcon='kubectx'
 alias kns='kubens'
 alias kpods='kubectl get pods --all-namespaces -o wide'
+alias kpodsbad='kubectl get pods --all-namespaces -o wide --no-headers | egrep -v "Running|cstest|job-cleaner"'
+alias kpodrequests='kubectl get pods -o "custom-columns=NAME:.metadata.name,STATUS:.status.phase,NODE:.status.hostIP,REQUESTS-MEM:.spec.containers[*].resources.requests.memory,REQUESTS-CPU:.spec.containers[*].resources.requests.cpu"'
 alias kimg='kubectl get pods -o "custom-columns=NAME:.metadata.name,STATUS:.status.phase,NODE:.status.hostIP,IMAGE:.spec.containers[*].image"'
 alias krestart='kubectl patch -p "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"${KRESTART_ANNOTATION:-krestart}\":\"`date +'%s'`\"}}}}}"'
 alias kevicted='kubectl get pods --all-namespaces -ojson | jq -r ".items[] | select(.status.reason!=null) | select(.status.reason | contains(\"Evicted\")) | .metadata.name + \" \" + .metadata.namespace"'
@@ -126,5 +134,83 @@ function kresources() {
     echo "Average usage: ${avg_percent_cpu}% cpu, ${avg_percent_mem}% memory."
 }
 
+aws-instances() {
+    local profile="${1}"
+    local name="${2}"
+    shift 2
+    aws --profile ${profile} ec2 describe-instances --filters "Name=tag:Name,Values=*${name}*" "$@"
+}
+
+aws-instances-list() {
+    local profile="${1}"
+    local name="${2}"
+    shift 2
+    aws-instances ${profile} ${name} "$@" | jq -r '.Reservations[].Instances[] | "\(.Tags[]|select(.Key == "Name")|.Value) \(.PrivateIpAddress) \(.InstanceId) \(.InstanceType) \(.Placement.AvailabilityZone) \(.SubnetId) \(.IamInstanceProfile.Arn | split("/") | .[1] ) \(.SecurityGroups)"' | column -t | sort
+}
+
+aws-asg() {
+    local profile="${1}"
+    local name="${2}"
+    shift 2
+    aws --profile ${profile}  autoscaling describe-auto-scaling-groups --auto-scaling-group-names ${name} "$@"
+}
+
+aws-asgs() {
+    local profile="${1}"
+    shift 1
+    aws --profile ${profile}  autoscaling describe-auto-scaling-groups
+}
+
+aws-asg-list() {
+    local profile="${1}"
+    shift 1
+    aws-asgs ${profile} | jq -r '.AutoScalingGroups[] | "\(.AutoScalingGroupName) \(.DesiredCapacity)"' | column -t | sort 
+}
+
+aws-asg-history() {
+    local profile="${1}"
+    local name="${2}"
+    shift 2
+    aws --profile ${profile} autoscaling describe-scaling-activities --auto-scaling-group-name ${name} | jq .
+}
+
+
+aws-role() {
+    local profile="${1}"
+    local role="${2}"
+    shift 2
+    aws --profile ${profile} iam get-role --role-name ${role} "$@" && \
+    aws --profile ${profile} iam list-attached-role-policies --role-name ${role} "$@" && \
+    for policy in $(aws iam --profile ${profile} list-role-policies --role-name ${role} | jq '.PolicyNames[]' -r); do 
+        echo "Inline Policy: ${policy}"
+        aws iam --profile ${profile} get-role-policy --role-name ${role} --policy-name ${policy};
+    done
+}
+
+aws-role-policy() {
+    local profile="${1}"
+    local role="${2}"
+    local policy="${3}"
+    shift 3
+    aws --profile ${profile} iam get-role-policy --role-name ${role} --policy-name ${policy} "$@"
+}
+
+aws-elb() {
+    local profile="${1}"
+    local name="${2}"
+    shift 2
+    aws --profile ${profile} elb describe-load-balancers --load-balancer-names ${name} "$@" || aws --profile ${profile} elbv2 describe-load-balancers --names ${name} "$@" 
+}
+
+encryptfile() {
+    openssl enc -e -aes-256-cbc -a -salt -in $1 -out ${1}.enc
+}
+
+decryptfile() {
+    openssl enc -d -aes-256-cbc -a -salt -in $1
+}
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+
+export PATH="$HOME/.poetry/bin:$PATH"

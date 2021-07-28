@@ -9,6 +9,7 @@ fd
 fzf
 git
 go
+hadolint
 helmfile
 htop
 httpie
@@ -26,6 +27,7 @@ pre-commit
 protobuf
 pyenv
 ranger
+shellcheck
 sipcalc
 stern
 terraform

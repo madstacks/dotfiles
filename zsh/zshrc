@@ -11,6 +11,8 @@ export VISUAL=$EDITOR
 export WORKON_HOME=$HOME/virtualenvs
 export PROJECT_HOME=$HOME/dev
 export PYENV_VIRTUALENVWRAPPER_PREFER_PYVENV="true"
+export BAT_STYLE="plain"
+export BAT_THEME="Solarized (dark)"
 
 eval "$(pyenv init -)"
 pyenv virtualenvwrapper_lazy
@@ -46,6 +48,7 @@ alias pfind='ps -aef | grep -i'
 alias vf='vim $(fzf --exact)'
 alias vdiff="vimdiff -c 'set diffopt+=iwhite'"
 alias venv='workon $(workon | fzf)'
+alias cat="bat"
 
 alias k='kubectl'
 alias kcon='kubectx'

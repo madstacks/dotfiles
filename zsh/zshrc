@@ -39,6 +39,7 @@ alias gpo="git push origin"
 alias gcob="git checkout -b"
 alias gco='git checkout $(git branch | fzf)'
 alias gprm='git pull --rebase origin master'
+alias gcleanmerged='git branch --merged master | egrep -v "master|main" | xargs -n 1 git branch -D'
 alias rd="rm -rf"
 alias tpl="terraform plan | landscape"
 alias pfind='ps -aef | grep -i'

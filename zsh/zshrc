@@ -37,34 +37,38 @@ bindkey '^E' end-of-line
 # override alias from fasd prezto module
 alias j='fasd_cd'
 
-alias gpo="git push origin"
 alias gcob="git checkout -b"
 alias gco='git checkout $(git branch | fzf)'
 alias gprm='git pull --rebase origin master'
+alias gmt='go mod tidy'
 alias gcleanmerged='git branch --merged master | egrep -v "master|main" | xargs -n 1 git branch -D'
 alias rd="rm -rf"
 alias tpl="terraform plan | landscape"
 alias pfind='ps -aef | grep -i'
-alias vf='vim $(fzf --exact)'
+alias vf='nvim $(fzf --exact)'
 alias vdiff="vimdiff -c 'set diffopt+=iwhite'"
 alias venv='workon $(workon | fzf)'
 alias cat="bat"
+alias vi="${HOME}/.local/bin/lvim"
 
 alias k='kubectl'
 alias kcon='kubectx'
 alias kns='kubens'
 alias kpods='kubectl get pods --all-namespaces -o wide'
-alias kpodsbad='kubectl get pods --all-namespaces -o wide --no-headers | egrep -v "Running|cstest|job-cleaner"'
 alias kpodrequests='kubectl get pods -o "custom-columns=NAME:.metadata.name,STATUS:.status.phase,NODE:.status.hostIP,REQUESTS-MEM:.spec.containers[*].resources.requests.memory,REQUESTS-CPU:.spec.containers[*].resources.requests.cpu"'
 alias kimg='kubectl get pods -o "custom-columns=NAME:.metadata.name,STATUS:.status.phase,NODE:.status.hostIP,IMAGE:.spec.containers[*].image"'
 alias krestart='kubectl patch -p "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"${KRESTART_ANNOTATION:-krestart}\":\"`date +'%s'`\"}}}}}"'
 alias kevicted='kubectl get pods --all-namespaces -ojson | jq -r ".items[] | select(.status.reason!=null) | select(.status.reason | contains(\"Evicted\")) | .metadata.name + \" \" + .metadata.namespace"'
+alias kconfigmaps='get deploy -o "custom-columns=NAME:.metadata.name,CONFIGMAP:.spec.template.spec.containers[*].envFrom[*].configMapRef.name"'
+
+alias dstopall='docker stop $(docker ps -q)'
 
 alias -g G="|grep --color=auto -Ei"
 alias -g L="|less -R"
 alias -g SL="|sort|less"
 alias -g NOC="|sed -r 's,\x1B\[[0-9;]*[a-zA-Z],,g'|tr -d '\r'"
 alias -g Y="-o yaml | less -R"
+alias -g decodeopenssl="base64 -d | openssl x509 -text -noout"
 
 # delete a local and remote git branch
 function rmbranch() {
@@ -138,6 +142,10 @@ function kresources() {
     echo "Average usage: ${avg_percent_cpu}% cpu, ${avg_percent_mem}% memory."
 }
 
+ksecret() {
+    kubectl get secrets $1 -o json | jq ".data[\"$2\"]" -r | base64 -d
+}
+
 aws-instances() {
     local profile="${1}"
     local name="${2}"
@@ -150,6 +158,13 @@ aws-instances-list() {
     local name="${2}"
     shift 2
     aws-instances ${profile} ${name} "$@" | jq -r '.Reservations[].Instances[] | "\(.Tags[]|select(.Key == "Name")|.Value) \(.PrivateIpAddress) \(.InstanceId) \(.InstanceType) \(.Placement.AvailabilityZone) \(.SubnetId) \(.IamInstanceProfile.Arn | split("/") | .[1] ) \(.SecurityGroups)"' | column -t | sort
+}
+
+aws-launchconfig() {
+    local profile="${1}"
+    local name="${2}"
+    shift 2
+    aws --profile ${profile} autoscaling describe-launch-configurations --launch-configuration-names ${name} "$@"
 }
 
 aws-asg() {
@@ -179,12 +194,20 @@ aws-asg-history() {
 }
 
 
+aws-sg() {
+    local profile="${1}"
+    local sgid="${2}"
+    shift 2
+    aws --profile ${profile} ec2 describe-security-groups --group-ids ${sgid} | jq .
+}
+
 aws-role() {
     local profile="${1}"
     local role="${2}"
     shift 2
     aws --profile ${profile} iam get-role --role-name ${role} "$@" && \
     aws --profile ${profile} iam list-attached-role-policies --role-name ${role} "$@" && \
+    aws --profile ${profile} iam get-instance-profile --instance-profile-name ${role} "$@"; \
     for policy in $(aws iam --profile ${profile} list-role-policies --role-name ${role} | jq '.PolicyNames[]' -r); do 
         echo "Inline Policy: ${policy}"
         aws iam --profile ${profile} get-role-policy --role-name ${role} --policy-name ${policy};
@@ -199,11 +222,33 @@ aws-role-policy() {
     aws --profile ${profile} iam get-role-policy --role-name ${role} --policy-name ${policy} "$@"
 }
 
+
+aws-role-delete() {
+    local profile="${1}"
+    local role="${2}"
+    shift 2
+    aws --profile ${profile} iam delete-role --role-name ${role} "$@" && \
+}
+
 aws-elb() {
     local profile="${1}"
     local name="${2}"
     shift 2
     aws --profile ${profile} elb describe-load-balancers --load-balancer-names ${name} "$@" || aws --profile ${profile} elbv2 describe-load-balancers --names ${name} "$@" 
+}
+
+aws-rds() {
+    local profile="${1}"
+    local name="${2}"
+    shift 2
+    aws --profile ${profile} rds describe-db-instances --db-instance-identifier ${name}
+}
+
+aws-kms() {
+    local profile="${1}"
+    local name="${2}"
+    shift 2
+    aws --profile ${profile} kms describe-key --key-id ${name}
 }
 
 encryptfile() {
@@ -216,5 +261,3 @@ decryptfile() {
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
-
-export PATH="$HOME/.poetry/bin:$PATH"

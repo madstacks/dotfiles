@@ -54,7 +54,7 @@ alias vi="${HOME}/.local/bin/lvim"
 alias k='kubectl'
 alias kcon='kubectx'
 alias kns='kubens'
-alias kpods='kubectl get pods --all-namespaces -o wide'
+alias kpodsall='kubectl get pods --all-namespaces -o wide'
 alias kpodrequests='kubectl get pods -o "custom-columns=NAME:.metadata.name,STATUS:.status.phase,NODE:.status.hostIP,REQUESTS-MEM:.spec.containers[*].resources.requests.memory,REQUESTS-CPU:.spec.containers[*].resources.requests.cpu"'
 alias kimg='kubectl get pods -o "custom-columns=NAME:.metadata.name,STATUS:.status.phase,NODE:.status.hostIP,IMAGE:.spec.containers[*].image"'
 alias krestart='kubectl patch -p "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"${KRESTART_ANNOTATION:-krestart}\":\"`date +'%s'`\"}}}}}"'
@@ -63,10 +63,11 @@ alias kconfigmaps='get deploy -o "custom-columns=NAME:.metadata.name,CONFIGMAP:.
 
 alias dstopall='docker stop $(docker ps -q)'
 
-alias -g G="|grep --color=auto -Ei"
-alias -g L="|less -R"
-alias -g SL="|sort|less"
-alias -g NOC="|sed -r 's,\x1B\[[0-9;]*[a-zA-Z],,g'|tr -d '\r'"
+alias -g J="| jq ."
+alias -g G="| grep --color=auto -Ei"
+alias -g L="| less -R"
+alias -g SL="| sort | less"
+alias -g NOC="| sed -r 's,\x1B\[[0-9;]*[a-zA-Z],,g' | tr -d '\r'"
 alias -g Y="-o yaml | less -R"
 alias -g decodeopenssl="base64 -d | openssl x509 -text -noout"
 
@@ -96,6 +97,11 @@ function sdk() {
 # print the process using a port (for MacOS)
 function psport() {
     for i in $(lsof -Pnl +M -i4 | grep ":${1}.*LISTEN" | awk '{ print $2 }'); do ps -fp $i; done
+}
+
+function pmem() {
+  local pid="$(pgrep -n -f $1)"
+  ps -o pid,rss,command -p ${pid} | awk '{if(NR>1)printf "%d\t%.2f MB\t%s\n", $1, $2/1024, $3}'
 }
 
 # git grep the entire repo, not just the current directory
@@ -144,6 +150,10 @@ function kresources() {
 
 ksecret() {
     kubectl get secrets $1 -o json | jq ".data[\"$2\"]" -r | base64 -d
+}
+
+kpods() {
+  kubectl get pods -o wide -l app="${1}"
 }
 
 aws-instances() {
